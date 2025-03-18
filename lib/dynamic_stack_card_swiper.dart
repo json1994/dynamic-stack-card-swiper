@@ -144,8 +144,7 @@ class _DynamicStackCardSwiperState<T> extends State<DynamicStackCardSwiper<T>>
 
   double get _effectiveScaleIncrement => 1 - widget.backgroundCardScale;
 
-  Offset get _effectiveOffset =>
-      widget.backgroundCardOffset ?? _defaultBackgroundCardOffset;
+  Offset get _effectiveOffset => widget.backgroundCardOffset ?? _defaultBackgroundCardOffset;
 
   SwiperActivity? _swipeActivity;
 
@@ -227,15 +226,10 @@ class _DynamicStackCardSwiperState<T> extends State<DynamicStackCardSwiper<T>>
       _position.offset = newActivity.currentOffset;
       setState(() {});
     });
-    widget.onSwipeBegin?.call(
-        previousIndex != null ? items[previousIndex] : null,
-        targetIndex != null ? items[targetIndex] : null,
-        newActivity);
-    _previousActivityFuture = newActivity.animation
-        .forward()
-        .orCancel
-        .then((_) => false)
-        .onError((error, stackTrace) {
+    widget.onSwipeBegin?.call(previousIndex != null ? items[previousIndex] : null,
+        targetIndex != null ? items[targetIndex] : null, newActivity);
+    _previousActivityFuture =
+        newActivity.animation.forward().orCancel.then((_) => false).onError((error, stackTrace) {
       if (error is TickerCanceled) {
         return true;
       }
@@ -257,8 +251,8 @@ class _DynamicStackCardSwiperState<T> extends State<DynamicStackCardSwiper<T>>
     } else if (previousIndex != null) {
       previousItem = items[previousIndex];
     }
-    widget.onSwipeEnd?.call(previousItem,
-        targetIndex != null ? items[targetIndex] : null, newActivity);
+    widget.onSwipeEnd
+        ?.call(previousItem, targetIndex != null ? items[targetIndex] : null, newActivity);
 
     if (items.isEmpty) {
       widget.onEnd?.call();
@@ -322,6 +316,21 @@ class _DynamicStackCardSwiperState<T> extends State<DynamicStackCardSwiper<T>>
     super.didChangeDependencies();
   }
 
+  void _insertCardAt(T item, int index) {
+    setState(() {
+      if (index < 0) {
+        // Add to the top of the stack
+        items.add(item);
+      } else if (index >= items.length) {
+        // Add to the bottom of the stack
+        items.insert(0, item);
+      } else {
+        // Add at the specified index
+        items.insert(index, item);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
@@ -345,13 +354,11 @@ class _DynamicStackCardSwiperState<T> extends State<DynamicStackCardSwiper<T>>
               effectiveBackgroundCardCount,
               (index) => items.length - 2 - index,
             ),
-            builder: (context, index) =>
-                widget.cardBuilder.call(context, items[index]),
+            builder: (context, index) => widget.cardBuilder.call(context, items[index]),
             scaleIncrement: _effectiveScaleIncrement,
             offsetIncrement: _effectiveOffset,
             initialEffectFactor: 1 - maxProgressToThreshold,
-            fadeLastItem:
-                effectiveBackgroundCardCount > widget.backgroundCardCount,
+            fadeLastItem: effectiveBackgroundCardCount > widget.backgroundCardCount,
           ),
         Transform.translate(
           offset: _position.offset,
@@ -486,9 +493,8 @@ class _BackgroundCards extends StatelessWidget {
                 return MapEntry(
                   j,
                   Opacity(
-                    opacity: fadeLastItem && j == indices.length - 1
-                        ? min(1, position.progress)
-                        : 1,
+                    opacity:
+                        fadeLastItem && j == indices.length - 1 ? min(1, position.progress) : 1,
                     child: Transform.translate(
                       offset: offset,
                       child: Transform.scale(
@@ -617,6 +623,17 @@ class DynamicStackCardSwiperController<T> extends ChangeNotifier {
     notifyListeners();
   }
 
+  void insertCardAt(T item, int index) {
+    _assertIsAttached();
+    _attachedSwiper!._insertCardAt(item, index);
+    notifyListeners();
+  }
+  void removeAll() {
+    _assertIsAttached();
+    items?.clear();
+    notifyListeners();
+  }
+
   /// Animate the card at the top of the stack to the specified offset.
   ///
   /// The card will not reset or snap at the end of the animation-it is up to
@@ -688,13 +705,11 @@ class SwiperPosition with ChangeNotifier {
   double get angle {
     // If we allow inverting the direction and the user is dragging from the
     // bottom half of the card, angle in the opposite direction.
-    final direction = _invertAngleOnBottomDrag &&
-            _rotationAlignment != null &&
-            _rotationAlignment!.y > 0
-        ? -1
-        : 1;
-    return (direction * _maxAngle * (_offset.dx / _cardSize.width))
-        .clamp(-_maxAngle, _maxAngle);
+    final direction =
+        _invertAngleOnBottomDrag && _rotationAlignment != null && _rotationAlignment!.y > 0
+            ? -1
+            : 1;
+    return (direction * _maxAngle * (_offset.dx / _cardSize.width)).clamp(-_maxAngle, _maxAngle);
   }
 
   /// The rotation angle of the card in radians.
